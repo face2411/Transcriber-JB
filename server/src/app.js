@@ -5,7 +5,10 @@ import { fileURLToPath } from "node:url";
 import { companiesRouter } from "./routes/companies.js";
 import { exclusionsRouter } from "./routes/exclusions.js";
 import { activityRouter } from "./routes/activity.js";
-import { anthropicRouter, hubspotRouter, apolloRouter, hunterRouter } from "./routes/stubs.js";
+import { anthropicRouter } from "./routes/anthropic.js";
+import { hubspotRouter } from "./routes/hubspot.js";
+import { apolloRouter } from "./routes/apollo.js";
+import { hunterRouter } from "./routes/hunter.js";
 
 const serverSrcDir = path.dirname(fileURLToPath(import.meta.url));
 const clientDist = path.resolve(serverSrcDir, "../../client/dist");
@@ -22,7 +25,6 @@ export function createApp() {
   app.use("/api/exclusions", exclusionsRouter);
   app.use("/api/activity", activityRouter);
 
-  // Stub endpoints for future integrations (spec.md "Future Integrations").
   app.use("/api/anthropic", anthropicRouter);
   app.use("/api/hubspot", hubspotRouter);
   app.use("/api/apollo", apolloRouter);
