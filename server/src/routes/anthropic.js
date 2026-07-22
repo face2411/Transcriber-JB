@@ -118,6 +118,7 @@ For signal_notes: use the actual signal type id strings as keys (e.g. "ma_activi
   {
     "name": "company name",
     "hq": "City, ST if you are confident, otherwise null",
+    "website": "https://the-company's-real-domain.com if you are confident of the exact domain, otherwise null - never guess or invent a domain",
     "fit_rationale": "one sentence on why this company profile generally fits - no fabricated specifics",
     "service_line_fit": "IT / Product Engineering | AEC / BIM Services | Siemens Building X | Data Center / MEP",
     "signal_tier": "Tier 1 | Tier 2 | Tier 3",

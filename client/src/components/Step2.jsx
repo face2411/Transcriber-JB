@@ -8,6 +8,10 @@ const { orange: O, orangeDim: O2, green: GR, blue: BL, surface1: S1, surface2: S
 
 const tierColor = (t) => (t === "Tier 1" ? "tier1" : t === "Tier 2" ? "tier2" : "tier3");
 const liCompanyURL = (name) => `https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(name)}`;
+// Falls back to a Google search when the AI wasn't confident of the exact
+// domain, rather than guessing/inventing one - matches spec.md's "Website
+// (cached domain or Google search)" action link.
+const websiteURL = (co) => co.website || `https://www.google.com/search?q=${encodeURIComponent(co.name + " official website")}`;
 
 export default function Step2({ onNext, onBack, sessionData, setSessionData }) {
   const [loading, setLoading] = useState(false);
@@ -289,6 +293,7 @@ export default function Step2({ onNext, onBack, sessionData, setSessionData }) {
               {co.gcc_risk && co.gcc_risk !== "low" && <div style={{ fontSize: 11, color: RD, marginBottom: 6 }}>GCC: {co.gcc_note}</div>}
               <div style={{ display: "flex", gap: 10, fontSize: 11 }} onClick={(e) => e.stopPropagation()}>
                 <a href={liCompanyURL(co.name)} target="_blank" rel="noreferrer" style={{ color: BL }}>LinkedIn</a>
+                <a href={websiteURL(co)} target="_blank" rel="noreferrer" style={{ color: BL }}>{co.website ? "Website" : "Website (search)"}</a>
                 <button onClick={() => skipCompany(co.name)} style={{ background: "none", border: "none", color: T3, cursor: "pointer", fontSize: 11, padding: 0 }}>Skip</button>
                 <button onClick={() => setTagReasonPicker(tagReasonPicker === co.name ? null : co.name)} style={{ background: "none", border: "none", color: T3, cursor: "pointer", fontSize: 11, padding: 0 }}>Tag</button>
               </div>
