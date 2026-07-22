@@ -328,7 +328,8 @@ export default function Step2({ onNext, onBack, sessionData, setSessionData }) {
                 {news.signals?.map((s, i) => (
                   <div key={i} style={{ borderLeft: `2px solid ${BR}`, paddingLeft: 10, marginBottom: 10 }}>
                     <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 2 }}>
-                      <Tag color={s.signal_strength === "High" ? "tier1" : s.signal_strength === "Medium" ? "tier2" : "tier3"}>{s.category}</Tag>
+                      <Tag color={s.signal_strength === "High" ? "tier1" : s.signal_strength === "Medium" ? "tier2" : "tier3"}>{s.signal_strength}</Tag>
+                      <Tag>{s.category}</Tag>
                     </div>
                     <div style={{ fontSize: 12, color: T1, fontWeight: 600 }}>{s.headline}</div>
                     <div style={{ fontSize: 11, color: T2, marginTop: 2 }}>{s.detail}</div>
