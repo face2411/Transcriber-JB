@@ -122,6 +122,7 @@ For signal_notes: use the actual signal type id strings as keys (e.g. "ma_activi
     "fit_rationale": "one sentence on why this company profile generally fits - no fabricated specifics",
     "service_line_fit": "IT / Product Engineering | AEC / BIM Services | Siemens Building X | Data Center / MEP",
     "signal_tier": "Tier 1 | Tier 2 | Tier 3",
+    "tier_rationale": "one sentence on specifically why this company earned this tier - not the vertical/ICP fit, the tier assignment itself (e.g. 'Tier 1: well-known company of clearly the right size and profile for the vertical' or 'Tier 2: plausible fit but size/profile less certain from general knowledge')",
     "matched_signal_types": ["array of signal type ids that genuinely apply, empty array if none"],
     "signal_notes": {"ma_activity": "example - acquired [company] in [year] or was acquired by [company]"},
     "gcc_risk": "low | medium | flag",

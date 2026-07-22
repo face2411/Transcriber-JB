@@ -176,11 +176,16 @@ export default function Step2({ onNext, onBack, sessionData, setSessionData }) {
           <div style={{ fontSize: 13, color: T2, lineHeight: 1.7, marginBottom: 10 }}>{fastResult.qualification_rationale}</div>
           {fastResult.flags?.length > 0 && (
             <div style={{ marginBottom: 10 }}>
+              <Label>Red Flags</Label>
               {fastResult.flags.map((f, i) => <div key={i} style={{ fontSize: 12, color: RD }}>&bull; {f}</div>)}
             </div>
           )}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div><Label>Signal Tier</Label><Tag color={tierColor(fastResult.signal_tier)}>{fastResult.signal_tier}</Tag></div>
+            <div>
+              <Label>Signal Tier</Label>
+              <Tag color={tierColor(fastResult.signal_tier)}>{fastResult.signal_tier}</Tag>
+              {fastResult.tier_rationale && <div style={{ fontSize: 11, color: T3, fontStyle: "italic", marginTop: 4 }}>{fastResult.tier_rationale}</div>}
+            </div>
             <div><Label>Service Line</Label><div style={{ fontSize: 12, color: T1 }}>{fastResult.service_line_fit}</div></div>
             <div><Label>Est. Employees</Label><div style={{ fontSize: 12, color: T1 }}>{fastResult.estimated_employees || "unknown"}</div></div>
             <div><Label>GCC Risk</Label><div style={{ fontSize: 12, color: fastResult.gcc_risk === "flag" ? RD : T1 }}>{fastResult.gcc_risk}{fastResult.gcc_note ? ` - ${fastResult.gcc_note}` : ""}</div></div>
@@ -283,6 +288,7 @@ export default function Step2({ onNext, onBack, sessionData, setSessionData }) {
                 </div>
               </div>
               {co.hq && <div style={{ fontSize: 11, color: T3, marginBottom: 6 }}>{co.hq}</div>}
+              {co.tier_rationale && <div style={{ fontSize: 11, color: T3, fontStyle: "italic", marginBottom: 6 }}>Why {co.signal_tier}: {co.tier_rationale}</div>}
               <div style={{ fontSize: 12, color: T2, lineHeight: 1.6, marginBottom: 8 }}>{co.why_now}</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
                 {(co.matched_signal_types || []).map((id) => {
