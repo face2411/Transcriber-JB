@@ -3,7 +3,7 @@ import { THEME, SIGNAL_TYPES, TAG_REASONS, tagColor } from "@vee/shared";
 import { anthropic, getExclusions, tagCompany as apiTagCompany, removeTag as apiRemoveTag, getCompanyByName, saveCompany } from "../api/client.js";
 import { Card, Btn, Tag, Label, Spinner, ErrorBox, Input } from "./primitives.jsx";
 
-const { orange: O, orangeDim: O2, green: GR, surface1: S1, surface2: S2, surface3: S3,
+const { orange: O, orangeDim: O2, green: GR, blue: BL, surface1: S1, surface2: S2, surface3: S3,
   border: BR, textPrimary: T1, textSecondary: T2, textMuted: T3, red: RD } = THEME;
 
 const tierColor = (t) => (t === "Tier 1" ? "tier1" : t === "Tier 2" ? "tier2" : "tier3");
