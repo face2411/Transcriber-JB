@@ -133,15 +133,26 @@ export default function Step2({ onNext, onBack, sessionData, setSessionData }) {
     try {
       const result = await anthropic.newsIntel({
         name: co.name, website: co.website, domain: co.domain, disambiguationUrl: newsUrl.trim(),
+        vertical: sessionData.verticalRec?.top_vertical, service_line_fit: co.service_line_fit,
       });
       setNews(result);
       setSessionData((p) => ({ ...p, companyNews: result }));
+
+      // The news pull is real research - it re-derives tier/rationale/flags
+      // grounded in actual findings, superseding the unverified list guess.
+      // Merge that back into the card so the list reflects what's verified.
+      const verifiedFields = {
+        signal_tier: result.signal_tier || co.signal_tier,
+        tier_rationale: result.tier_rationale || co.tier_rationale,
+        flags: result.flags?.length ? result.flags : co.flags,
+        signal_verified: true,
+      };
+      setCompanies((prev) => prev.map((c) => (c.name === co.name ? { ...c, ...verifiedFields } : c)));
+      if (selected?.name === co.name) setSelected((s) => ({ ...s, ...verifiedFields }));
+
       await saveCompany(co.name, {
-        news: result, signal_tier: co.signal_tier, service_line_fit: co.service_line_fit, hq: co.hq, why_now: co.why_now, gcc_risk: co.gcc_risk,
+        news: result, ...verifiedFields, service_line_fit: co.service_line_fit, hq: co.hq, why_now: co.why_now, gcc_risk: co.gcc_risk,
       });
-      if (result.signals?.length > 0) {
-        setCompanies((prev) => prev.map((c) => (c.name === co.name ? { ...c, signal_verified: true } : c)));
-      }
     } catch (e) {
       setNewsError(e.message || "News search failed");
     } finally {
@@ -288,7 +299,13 @@ export default function Step2({ onNext, onBack, sessionData, setSessionData }) {
                 </div>
               </div>
               {co.hq && <div style={{ fontSize: 11, color: T3, marginBottom: 6 }}>{co.hq}</div>}
-              {co.tier_rationale && <div style={{ fontSize: 11, color: T3, fontStyle: "italic", marginBottom: 6 }}>Why {co.signal_tier}: {co.tier_rationale}</div>}
+              {co.tier_rationale && (
+                <div style={{ fontSize: 11, color: T3, fontStyle: "italic", marginBottom: 6 }}>
+                  <span style={{ fontWeight: 700, fontStyle: "normal", color: co.signal_verified ? GR : T3 }}>
+                    {co.signal_verified ? "Verified" : "Unverified - AI estimate"}:
+                  </span> Why {co.signal_tier}: {co.tier_rationale}
+                </div>
+              )}
               <div style={{ fontSize: 12, color: T2, lineHeight: 1.6, marginBottom: 8 }}>{co.why_now}</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
                 {(co.matched_signal_types || []).map((id) => {
@@ -297,6 +314,11 @@ export default function Step2({ onNext, onBack, sessionData, setSessionData }) {
                 })}
               </div>
               {co.gcc_risk && co.gcc_risk !== "low" && <div style={{ fontSize: 11, color: RD, marginBottom: 6 }}>GCC: {co.gcc_note}</div>}
+              {co.flags?.length > 0 && (
+                <div style={{ marginBottom: 6 }}>
+                  {co.flags.map((f, i) => <div key={i} style={{ fontSize: 11, color: RD }}>&bull; {f}</div>)}
+                </div>
+              )}
               <div style={{ display: "flex", gap: 10, fontSize: 11 }} onClick={(e) => e.stopPropagation()}>
                 <a href={liCompanyURL(co.name)} target="_blank" rel="noreferrer" style={{ color: BL }}>LinkedIn</a>
                 <a href={websiteURL(co)} target="_blank" rel="noreferrer" style={{ color: BL }}>{co.website ? "Website" : "Website (search)"}</a>

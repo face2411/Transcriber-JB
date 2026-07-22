@@ -75,6 +75,10 @@ ICP: $50M-$250M revenue, 201-1,500 employees, US-based, no large captive IT/offs
 Research findings:
 ${search.text.slice(0, 3000)}
 
+For "tier_rationale" and "qualification_rationale": be specific and concrete, grounded in the actual findings above - cite the specific fact, number, or event that drove the tier/qualification (e.g. "Tier 1: 2024 VP of Engineering hire from an offshore-heavy competitor, plus active postings for 6 senior engineering roles" not "Tier 1: strong fit for the vertical"). Generic boilerplate that could apply to any company in this vertical is not acceptable - if the findings don't support a specific claim, say what's actually missing instead of writing something vague.
+
+For "flags": list every real reason for caution or disqualification you found, not just GCC/offshore delivery. Consider: company size outside the $50M-$250M revenue / 201-1,500 employee ICP range, vertical mismatch, recent acquisition that could mean the target no longer has standalone vendor decision authority, public company scale suggesting an existing large incumbent vendor relationship, weak or thin evidence behind the assigned tier, no genuinely relevant signal found in the research at all, or anything else that would make this a weak use of outreach time. Return an empty array only if you found nothing concerning - do not pad it, but do not default to GCC-only either.
+
 Return JSON exactly matching this shape:
 {"name":"${company}","hq":"City, ST or null","website":"${url || "null"}","vertical":"${vertical || "unspecified"}","signal_tier":"Tier 1 | Tier 2 | Tier 3","tier_rationale":"string","service_line_fit":"IT / Product Engineering | AEC / BIM Services | Siemens Building X | Data Center / MEP","why_now":"string","signal_verified":true,"gcc_risk":"low | medium | flag","gcc_note":"string","estimated_employees":"number or null","qualification":"Qualified | Flags Present | Disqualified","qualification_rationale":"string","flags":["string"]}`,
     maxTokens: 1500,
@@ -113,7 +117,11 @@ ${excludeList.length ? `\nDo NOT include any of these companies:\n${excludeList.
 
 Return ONLY a JSON array with exactly this shape - no other text. Keep "fit_rationale" to one sentence describing why this company's profile fits the vertical/ICP in general terms, not a specific claim about their current situation.
 
-For signal_notes: use the actual signal type id strings as keys (e.g. "ma_activity", "pe_owned", "modernization"). For each matched signal type, provide one specific verifiable fact supporting the match. If you cannot state a specific fact, write "General pattern match - verify with intelligence pull". Only include keys for signal types that actually matched this company:
+For "tier_rationale": name the specific thing driving the tier assignment for THIS company, not a template sentence that could apply to any company in the list (e.g. "Tier 1: dominant, well-known vendor in this exact niche at clearly the right employee scale" or "Tier 2: plausible fit but this is a smaller/less-established player where the size match is a guess" - not "Tier 1: strong fit for the vertical").
+
+For signal_notes: use the actual signal type id strings as keys (e.g. "ma_activity", "pe_owned", "modernization"). For each matched signal type, provide one specific verifiable fact supporting the match. If you cannot state a specific fact, write "General pattern match - verify with intelligence pull". Only include keys for signal types that actually matched this company.
+
+For "flags": list every real reason for caution about this candidate, not just GCC/offshore delivery risk. Consider: known scale well above or below the ICP band, being a subsidiary/division of a larger parent that may not have autonomous vendor decisions, being so dominant/large-cap that an existing incumbent relationship is likely, or genuine uncertainty about whether this company still operates independently (recent acquisition, merger, rebrand). Base flags only on general knowledge you're actually confident in - do not fabricate a specific concern you don't have real basis for. Empty array if nothing applies:
 [
   {
     "name": "company name",
@@ -122,11 +130,12 @@ For signal_notes: use the actual signal type id strings as keys (e.g. "ma_activi
     "fit_rationale": "one sentence on why this company profile generally fits - no fabricated specifics",
     "service_line_fit": "IT / Product Engineering | AEC / BIM Services | Siemens Building X | Data Center / MEP",
     "signal_tier": "Tier 1 | Tier 2 | Tier 3",
-    "tier_rationale": "one sentence on specifically why this company earned this tier - not the vertical/ICP fit, the tier assignment itself (e.g. 'Tier 1: well-known company of clearly the right size and profile for the vertical' or 'Tier 2: plausible fit but size/profile less certain from general knowledge')",
+    "tier_rationale": "specific to this company - see instructions above",
     "matched_signal_types": ["array of signal type ids that genuinely apply, empty array if none"],
     "signal_notes": {"ma_activity": "example - acquired [company] in [year] or was acquired by [company]"},
     "gcc_risk": "low | medium | flag",
-    "gcc_note": "brief note only if gcc_risk is medium or flag, otherwise empty string"
+    "gcc_note": "brief note only if gcc_risk is medium or flag, otherwise empty string",
+    "flags": ["array of caution reasons per instructions above, empty array if none"]
   }
 ]`;
 
@@ -164,7 +173,7 @@ For signal_notes: use the actual signal type id strings as keys (e.g. "ma_activi
 
 // -- Step 2: news intelligence, two-step (search then structure) ------------
 anthropicRouter.post("/news-intel", handler(async (req, res) => {
-  const { name, website, domain, disambiguationUrl } = req.body || {};
+  const { name, website, domain, disambiguationUrl, vertical, service_line_fit } = req.body || {};
   if (!name) return res.status(400).json({ error: "name is required" });
 
   const anchorUrl = disambiguationUrl || website || (domain ? `https://${domain}` : "");
@@ -190,20 +199,25 @@ anthropicRouter.post("/news-intel", handler(async (req, res) => {
   }
 
   const structured = await completeJSON({
-    system: "You are a business intelligence analyst. Return only valid JSON - no markdown fences, no explanation, just the raw JSON object.",
+    system: CORE_RULES + "\nReturn only valid JSON - no markdown fences, no explanation, just the raw JSON object.",
     prompt: `Structure these research findings about "${name}" into a JSON intelligence brief for a B2B technology services sales rep at Vee Technologies (IT services, BIM/AEC, Building X smart facilities, Data Center MEP).
+
+Company: ${name}${vertical ? ` | Vertical: ${vertical}` : ""}${service_line_fit ? ` | Prior service line fit guess: ${service_line_fit}` : ""}
 
 Findings:
 ${search.text.slice(0, 3000)}
 
+These findings are REAL web search results, not a general-knowledge guess - use them to give a grounded reassessment of this company's signal tier, not just a news summary. "tier_rationale" and "flags" must cite something specific from the findings above, not restate generic ICP criteria. If the findings don't actually support a confident tier, say so plainly in tier_rationale rather than defaulting to an optimistic guess.
+
 Return exactly this structure:
-{"company":"${name}","signals":[{"category":"Executive Hire|M&A|Technology|Partnership|Event|Expansion|Financial|Construction|Other","headline":"brief headline","detail":"1-2 sentences","date":"date or recent","prospecting_relevance":"Vee opening","signal_strength":"High|Medium|Low","contact_implication":"contact suggestion or null"}],"summary":"2-3 sentence read on momentum and Vee opportunity"}`,
+{"company":"${name}","signals":[{"category":"Executive Hire|M&A|Technology|Partnership|Event|Expansion|Financial|Construction|Other","headline":"brief headline","detail":"1-2 sentences","date":"date or recent","prospecting_relevance":"Vee opening","signal_strength":"High|Medium|Low","contact_implication":"contact suggestion or null"}],"summary":"2-3 sentence read on momentum and Vee opportunity","signal_tier":"Tier 1 | Tier 2 | Tier 3","tier_rationale":"specific to a fact found above, or a plain statement that the findings don't support a confident tier","flags":["array of caution reasons grounded in the findings above - GCC/offshore delivery, size mismatch, acquisition/ownership changes, lack of real signal, etc. Empty array if genuinely none."]}`,
     maxTokens: 2000,
   });
 
   const data = structured.data;
   if (!data.signals) data.signals = [];
   if (!data.summary) data.summary = `Intelligence brief generated for ${name}.`;
+  if (!data.flags) data.flags = [];
   data.fetched = new Date().toISOString().split("T")[0];
   res.json({ ...data, usage: { search: search.usage, structure: structured.usage } });
 }));
