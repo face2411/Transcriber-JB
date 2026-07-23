@@ -89,8 +89,12 @@ Return JSON exactly matching this shape:
 
 // -- Step 2: company search (12 candidates) ----------------------------------
 anthropicRouter.post("/company-search", handler(async (req, res) => {
-  const { vertical, buyerType = "operator", sizeRange = "201-1,500 employees", tier1Only = false, signalTypes = [], excludeList = [] } = req.body || {};
+  const { vertical, buyerType = "operator", sizeRange = "201-1,500 employees", tier1Only = false, signalTypes = [], excludeList = [], hqFilter = "" } = req.body || {};
   if (!vertical) return res.status(400).json({ error: "vertical is required" });
+
+  const hqFocus = hqFilter.trim()
+    ? `\nHEADQUARTERS LOCATION FILTER - only include companies you believe are headquartered in or near ${JSON.stringify(hqFilter.trim())}. This is a candidate-generation filter based on your general knowledge, not a verified fact - if you aren't reasonably confident a company is based there, leave it out rather than guessing.`
+    : "";
 
   const signalFocus = signalTypes.length > 0
     ? `\nSIGNAL TYPE FOCUS - the user has selected the following specific patterns to search for. Every company should match at least one of these, and fit_rationale should reference which pattern applies and why, in honest general terms:\n${signalTypes.map((id) => {
@@ -107,7 +111,7 @@ What you actually know and can state: the company is real, operates in this vert
 
 TIER PRIORITY: tier here means "general fit confidence based on company profile" - Tier 1 means this is a strong, well-known fit for the vertical and size category. Tier 2/3 mean plausible but less certain fit. This is not a claim of verified signal - real signal verification happens separately once a company is selected.
 ${tier1Only ? "- Only include companies you would genuinely rate Tier 1 by this definition. Return fewer than 12 if needed rather than padding." : "- Order the array with your highest-confidence fits first."}
-${signalFocus}
+${signalFocus}${hqFocus}
 
 Criteria:
 - Target employee range: ${sizeRange} - use your general knowledge of the company's approximate size, and say so plainly if uncertain
@@ -142,7 +146,7 @@ For "flags": list every real reason for caution about this candidate, not just G
   const { text, usage } = await complete({
     system: CORE_RULES + "\nReturn raw JSON array only. No markdown fences, no preamble. Start with [ and end with ].",
     prompt,
-    maxTokens: 3000,
+    maxTokens: 4500,
   });
   const clean = text.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
   let parsed;
@@ -184,7 +188,7 @@ anthropicRouter.post("/news-intel", handler(async (req, res) => {
 
   const search = await completeWithWebSearch({
     system: `You are a business intelligence researcher. ${disambigNote} Search for recent news and write a plain text summary of what you find. No JSON, no formatting - just clear prose covering what you found.`,
-    prompt: `Find recent news about "${name}"${urlContext ? ` (${urlContext})` : ""} - leadership changes, M&A, expansions, technology investments, partnerships, construction projects, events. ${anchorUrl ? `Only include results that are clearly about this specific company at ${anchorUrl}.` : ""} Write a plain text summary of everything you find.`,
+    prompt: `Find recent news about "${name}"${urlContext ? ` (${urlContext})` : ""} - leadership changes, M&A, expansions, technology investments, partnerships, construction projects, events. Also find their exact corporate headquarters city and state. ${anchorUrl ? `Only include results that are clearly about this specific company at ${anchorUrl}.` : ""} Write a plain text summary of everything you find.`,
     maxTokens: 2000,
   });
 
@@ -210,7 +214,7 @@ ${search.text.slice(0, 3000)}
 These findings are REAL web search results, not a general-knowledge guess - use them to give a grounded reassessment of this company's signal tier, not just a news summary. "tier_rationale" and "flags" must cite something specific from the findings above, not restate generic ICP criteria. If the findings don't actually support a confident tier, say so plainly in tier_rationale rather than defaulting to an optimistic guess.
 
 Return exactly this structure:
-{"company":"${name}","signals":[{"category":"Executive Hire|M&A|Technology|Partnership|Event|Expansion|Financial|Construction|Other","headline":"brief headline","detail":"1-2 sentences","date":"date or recent","prospecting_relevance":"Vee opening","signal_strength":"High|Medium|Low","contact_implication":"contact suggestion or null"}],"summary":"2-3 sentence read on momentum and Vee opportunity","signal_tier":"Tier 1 | Tier 2 | Tier 3","tier_rationale":"specific to a fact found above, or a plain statement that the findings don't support a confident tier","flags":["array of caution reasons grounded in the findings above - GCC/offshore delivery, size mismatch, acquisition/ownership changes, lack of real signal, etc. Empty array if genuinely none."]}`,
+{"company":"${name}","hq":"City, ST - only if the findings above actually state it, otherwise null. Never guess.","signals":[{"category":"Executive Hire|M&A|Technology|Partnership|Event|Expansion|Financial|Construction|Other","headline":"brief headline","detail":"1-2 sentences","date":"date or recent","prospecting_relevance":"Vee opening","signal_strength":"High|Medium|Low","contact_implication":"contact suggestion or null"}],"summary":"2-3 sentence read on momentum and Vee opportunity","signal_tier":"Tier 1 | Tier 2 | Tier 3","tier_rationale":"specific to a fact found above, or a plain statement that the findings don't support a confident tier","flags":["array of caution reasons grounded in the findings above - GCC/offshore delivery, size mismatch, acquisition/ownership changes, lack of real signal, etc. Empty array if genuinely none."]}`,
     maxTokens: 2000,
   });
 
@@ -218,6 +222,56 @@ Return exactly this structure:
   if (!data.signals) data.signals = [];
   if (!data.summary) data.summary = `Intelligence brief generated for ${name}.`;
   if (!data.flags) data.flags = [];
+  data.fetched = new Date().toISOString().split("T")[0];
+  res.json({ ...data, usage: { search: search.usage, structure: structured.usage } });
+}));
+
+// -- Step 3: key leadership lookup, two-step (search then structure) --------
+// Best-effort public-info lookup, not an org chart diagram - see
+// Step3.jsx's "Key Leadership" card. Every entry is grounded in the web
+// search text below it, same provenance discipline as /news-intel.
+anthropicRouter.post("/leadership-lookup", handler(async (req, res) => {
+  const { name, website, domain, disambiguationUrl } = req.body || {};
+  if (!name) return res.status(400).json({ error: "name is required" });
+
+  const anchorUrl = disambiguationUrl || website || (domain ? `https://${domain}` : "");
+  const urlContext = anchorUrl ? `Company website: ${anchorUrl}` : "";
+  const disambigNote = anchorUrl
+    ? `CRITICAL: You are researching "${name}" specifically - the company at ${anchorUrl}. If search results return a different company with a similar name, state that clearly and do not include their people.`
+    : `CRITICAL: You are researching "${name}" specifically. If search results return a different company with a similar or identical name, state that clearly rather than returning the wrong people.`;
+
+  const search = await completeWithWebSearch({
+    system: `You are a business intelligence researcher. ${disambigNote} Search for this company's current key leadership - CEO, CTO/CIO, COO, VP Engineering, VP IT, VP Operations, Head of Facilities, or other titles relevant to technology/facilities/engineering decisions. Write a plain text summary of who you find and their titles, with any source context (e.g. "per LinkedIn", "per company press release"). No JSON, no formatting - just clear prose.`,
+    prompt: `Find the current key leadership team at "${name}"${urlContext ? ` (${urlContext})` : ""}, focused on executives relevant to a B2B technology/IT services sale: CEO, CTO, CIO, COO, VP/Director of Engineering, VP/Director of IT, VP of Operations, Head of Facilities or similar. For each person, note their name, title, and anything findable about tenure or background. Write a plain text summary of everything you find.`,
+    maxTokens: 1500,
+  });
+
+  if (!search.text || search.text.length < 40) {
+    return res.json({
+      company: name,
+      leaders: [],
+      note: `No public leadership information found for ${name}. Try checking their website's leadership/about page or LinkedIn directly.`,
+      fetched: new Date().toISOString().split("T")[0],
+      usage: { search: search.usage },
+    });
+  }
+
+  const structured = await completeJSON({
+    system: CORE_RULES + "\nReturn only valid JSON - no markdown fences, no explanation, just the raw JSON object.",
+    prompt: `Structure these research findings about "${name}"'s leadership into JSON for a B2B sales rep at Vee Technologies.
+
+Findings:
+${search.text.slice(0, 2500)}
+
+Only include people the findings above actually name - never invent a name or title to fill out the list. If the findings only support a partial picture, return fewer entries rather than guessing. This is best-effort public information (LinkedIn, press releases, company site), not a verified org chart.
+
+Return exactly this structure:
+{"company":"${name}","leaders":[{"name":"full name","title":"their title as found","relevance":"why this role matters for a Vee Technologies IT/engineering/facilities sale, 1 sentence","source_note":"brief note on where this came from, e.g. 'per LinkedIn' or 'per 2024 press release', or null if unclear"}],"note":"1-2 sentences on overall confidence/completeness of this picture, e.g. if it's a small subset or dated"}`,
+    maxTokens: 1200,
+  });
+
+  const data = structured.data;
+  if (!data.leaders) data.leaders = [];
   data.fetched = new Date().toISOString().split("T")[0];
   res.json({ ...data, usage: { search: search.usage, structure: structured.usage } });
 }));

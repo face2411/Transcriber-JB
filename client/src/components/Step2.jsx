@@ -33,6 +33,7 @@ export default function Step2({ onNext, onBack, sessionData, setSessionData }) {
   const vertical = sessionData.verticalRec?.top_vertical || "manufacturing";
   const sizeRange = sessionData.sizeRange || "201-1,500 employees";
   const buyerType = sessionData.buyerType || "operator";
+  const hqFilter = sessionData.hqFilter || "";
 
   useEffect(() => {
     getExclusions().then(setExclusions).catch(() => {});
@@ -66,7 +67,7 @@ export default function Step2({ onNext, onBack, sessionData, setSessionData }) {
     const excludeList = append ? [...new Set([...seenNames, ...excludedNames])] : excludedNames;
     try {
       const { companies: results } = await anthropic.companySearch({
-        vertical, buyerType, sizeRange, tier1Only, signalTypes, excludeList,
+        vertical, buyerType, sizeRange, tier1Only, signalTypes, excludeList, hqFilter,
       });
       const updated = append ? [...companies, ...results] : results;
       setCompanies(updated);
@@ -145,6 +146,7 @@ export default function Step2({ onNext, onBack, sessionData, setSessionData }) {
         signal_tier: result.signal_tier || co.signal_tier,
         tier_rationale: result.tier_rationale || co.tier_rationale,
         flags: result.flags?.length ? result.flags : co.flags,
+        hq: result.hq || co.hq,
         signal_verified: true,
       };
       setCompanies((prev) => prev.map((c) => (c.name === co.name ? { ...c, ...verifiedFields } : c)));

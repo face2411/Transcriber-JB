@@ -67,14 +67,25 @@ export default function App() {
     setWorkflowKey((k) => k + 1);
   };
 
+  // Resets the whole workflow back to Step 1 and switches to the Workflow
+  // tab - the one-click "get me back to the start" the header button and
+  // logo below both use, regardless of which step/tab you're currently on.
+  const goHome = () => {
+    setStartRecord(null);
+    setActiveTab("workflow");
+    setWorkflowKey((k) => k + 1);
+  };
+
   return (
     <div style={{ background: THEME.bg, color: THEME.textPrimary, minHeight: "100vh", fontFamily: "system-ui, sans-serif" }}>
-      <header style={{ borderBottom: `1px solid ${THEME.border}`, padding: "16px 24px" }}>
-        <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: "0.04em", color: THEME.orange }}>
-          VEE OPPORTUNITY INTELLIGENCE
-        </div>
-        <nav style={{ display: "flex", gap: 4, marginTop: 12 }}>
-          {TABS.map((tab) => (
+      <header style={{ borderBottom: `1px solid ${THEME.border}`, padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div>
+          <div onClick={goHome} title="Back to home"
+            style={{ fontSize: 14, fontWeight: 700, letterSpacing: "0.04em", color: THEME.orange, cursor: "pointer", width: "fit-content" }}>
+            VEE OPPORTUNITY INTELLIGENCE
+          </div>
+          <nav style={{ display: "flex", gap: 4, marginTop: 12 }}>
+            {TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -91,8 +102,16 @@ export default function App() {
             >
               {tab.label}
             </button>
-          ))}
-        </nav>
+            ))}
+          </nav>
+        </div>
+        <button onClick={goHome}
+          style={{
+            background: "transparent", color: THEME.textSecondary, border: `1px solid ${THEME.border}`,
+            borderRadius: 6, padding: "6px 14px", fontSize: 12, cursor: "pointer", fontFamily: "inherit",
+          }}>
+          &laquo; Home
+        </button>
       </header>
 
       <main style={{ padding: 24, maxWidth: 1100, margin: "0 auto" }}>

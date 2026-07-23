@@ -51,6 +51,7 @@ export const anthropic = {
   fastResearch: (body) => post("/api/anthropic/fast-research", body),
   companySearch: (body) => post("/api/anthropic/company-search", body),
   newsIntel: (body) => post("/api/anthropic/news-intel", body),
+  leadershipLookup: (body) => post("/api/anthropic/leadership-lookup", body),
   contactAnalysis: (body) => post("/api/anthropic/contact-analysis", body),
   booleanStrings: (body) => post("/api/anthropic/boolean-strings", body),
   outreach: (body) => post("/api/anthropic/outreach", body),

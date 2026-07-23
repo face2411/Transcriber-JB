@@ -59,6 +59,26 @@ export default function Step3({ onNext, onBack, sessionData, setSessionData }) {
 
   const navURL = (boolean) => `https://www.linkedin.com/sales/search/people?keywords=${encodeURIComponent(boolean)}&company=${encodeURIComponent(company?.name || "")}`;
 
+  // -- Key leadership lookup (best-effort public info, not a verified org chart) --
+  const [leadership, setLeadership] = useState(sessionData.leadership || null);
+  const [leaderLoading, setLeaderLoading] = useState(false);
+  const [leaderError, setLeaderError] = useState(null);
+
+  const fetchLeadership = async () => {
+    setLeaderLoading(true); setLeaderError(null);
+    try {
+      const result = await anthropic.leadershipLookup({
+        name: company?.name, website: company?.website, domain: company?.domain,
+      });
+      setLeadership(result);
+      setSessionData((p) => ({ ...p, leadership: result }));
+    } catch (e) {
+      setLeaderError(e.message || "Leadership lookup failed");
+    } finally {
+      setLeaderLoading(false);
+    }
+  };
+
   // -- Hunter email lookup -------------------------------------------------------
   const [emailResult, setEmailResult] = useState(sessionData.emailResult || null);
   const [emailLoading, setEmailLoading] = useState(false);
@@ -88,6 +108,40 @@ export default function Step3({ onNext, onBack, sessionData, setSessionData }) {
         <div style={{ fontSize: 20, color: T1, fontWeight: 600, marginBottom: 4 }}>Find the right contact</div>
         <div style={{ fontSize: 13, color: T2 }}>{company?.name} &middot; {company?.service_line_fit}</div>
       </div>
+
+      <Card style={{ marginBottom: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+          <Label style={{ margin: 0 }}>Key Leadership</Label>
+          <Btn small variant="ghost" onClick={fetchLeadership} disabled={leaderLoading}>
+            {leaderLoading ? <><Spinner />&nbsp;Searching...</> : leadership ? "Refresh" : "Find Leadership"}
+          </Btn>
+        </div>
+        <ErrorBox>{leaderError}</ErrorBox>
+        {!leadership && !leaderLoading && (
+          <div style={{ fontSize: 12, color: T3 }}>Best-effort public info (LinkedIn, press releases, company site) - not a verified org chart.</div>
+        )}
+        {leadership && (
+          <div>
+            {leadership.leaders?.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 8 }}>
+                {leadership.leaders.map((l, i) => (
+                  <div key={i} style={{ borderLeft: `2px solid ${BR}`, paddingLeft: 10 }}>
+                    <div style={{ fontSize: 13, color: T1, fontWeight: 700 }}>{l.name}</div>
+                    <div style={{ fontSize: 12, color: T2 }}>{l.title}</div>
+                    {l.relevance && <div style={{ fontSize: 11, color: T3, marginTop: 2 }}>{l.relevance}</div>}
+                    {l.source_note && <div style={{ fontSize: 10, color: T3, marginTop: 2, fontStyle: "italic" }}>{l.source_note}</div>}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ fontSize: 12, color: T3, marginBottom: 8 }}>{leadership.note}</div>
+            )}
+            {leadership.leaders?.length > 0 && leadership.note && (
+              <div style={{ fontSize: 11, color: T3, fontStyle: "italic" }}>{leadership.note}</div>
+            )}
+          </div>
+        )}
+      </Card>
 
       <Card style={{ marginBottom: 14 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>

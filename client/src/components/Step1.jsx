@@ -6,6 +6,17 @@ import { Card, Btn, Tag, Label, Input, Spinner, ErrorBox } from "./primitives.js
 const { orange: O, blue: BL, green: GR, surface1: S1, surface2: S2, surface3: S3,
   border: BR, textPrimary: T1, textSecondary: T2, textMuted: T3 } = THEME;
 
+function HqFilter({ value, onChange }) {
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ fontSize: 10, color: T3, textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700, marginBottom: 8 }}>
+        Headquarters Location <span style={{ fontSize: 9, color: T3, fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span>
+      </div>
+      <Input value={value} onChange={onChange} placeholder="e.g. Texas, Chicago IL, Northeast US - leave blank for anywhere" />
+    </div>
+  );
+}
+
 function SizeSelector({ value, onChange }) {
   return (
     <div style={{ marginBottom: 20 }}>
@@ -36,6 +47,7 @@ export default function Step1({ onNext, sessionData, setSessionData }) {
   const [selectedVertical, setSelectedVertical] = useState(sessionData.overrideVertical || "");
   const [buyerType, setBuyerType] = useState(sessionData.buyerType || "operator");
   const [sizeFilter, setSizeFilter] = useState(sessionData.sizeFilter || "any");
+  const [hqFilter, setHqFilter] = useState(sessionData.hqFilter || "");
   const [fastCompany, setFastCompany] = useState(sessionData.fastCompany || "");
   const [fastVertical, setFastVertical] = useState(sessionData.overrideVertical || "");
   const [fastUrl, setFastUrl] = useState(sessionData.fastUrl || "");
@@ -78,6 +90,7 @@ export default function Step1({ onNext, sessionData, setSessionData }) {
       buyerType,
       sizeFilter,
       sizeRange,
+      hqFilter,
       companies: [],
       skippedCompanies: [],
       selectedCompany: null,
@@ -208,6 +221,7 @@ export default function Step1({ onNext, sessionData, setSessionData }) {
           ))}
         </div>
         <SizeSelector value={sizeFilter} onChange={(f) => { setSizeFilter(f); setSessionData((p) => ({ ...p, sizeFilter: f })); }} />
+        <HqFilter value={hqFilter} onChange={(v) => { setHqFilter(v); setSessionData((p) => ({ ...p, hqFilter: v })); }} />
         <Btn onClick={() => proceedWith(selectedVertical)} disabled={!selectedVertical}>
           Find {buyerType === "software" ? "Software Companies serving" : "Companies in"} {selectedVertical || "..."}
         </Btn>
@@ -312,6 +326,7 @@ export default function Step1({ onNext, sessionData, setSessionData }) {
               ))}
             </div>
             <SizeSelector value={sizeFilter} onChange={(f) => { setSizeFilter(f); setSessionData((p) => ({ ...p, sizeFilter: f })); }} />
+            <HqFilter value={hqFilter} onChange={(v) => { setHqFilter(v); setSessionData((p) => ({ ...p, hqFilter: v })); }} />
           </Card>
 
           <div style={{ display: "flex", gap: 10 }}>
