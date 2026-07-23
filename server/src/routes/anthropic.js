@@ -146,7 +146,7 @@ For "flags": list every real reason for caution about this candidate, not just G
   const { text, usage } = await complete({
     system: CORE_RULES + "\nReturn raw JSON array only. No markdown fences, no preamble. Start with [ and end with ].",
     prompt,
-    maxTokens: 4500,
+    maxTokens: 8000,
   });
   const clean = text.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
   let parsed;
